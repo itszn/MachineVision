@@ -13,6 +13,7 @@ import javax.swing.JPanel;
 
 import com.googlecode.javacv.CanvasFrame;
 import com.googlecode.javacv.OpenCVFrameGrabber;
+import com.googlecode.javacv.cpp.opencv_core;
 import com.googlecode.javacv.cpp.opencv_core.IplImage;
 import com.googlecode.javacv.cpp.opencv_highgui;
 
@@ -37,6 +38,7 @@ public class CameraAPI implements ActionListener{
 	Dimension imgDim = null;
 	
 	IplImage currentImage;
+	IplImage lastImage;
 	
 	IplImage outputImage;
 	
@@ -93,8 +95,13 @@ public class CameraAPI implements ActionListener{
 
 		optionsFrame.pack();
 		optionsFrame.setVisible(true);
-		mainLoop();
 		
+		
+	}
+	
+	public void start() {
+		ip.init(currentImage);
+		mainLoop();
 	}
 	
 	public IplImage getNewImage() {
@@ -104,6 +111,9 @@ public class CameraAPI implements ActionListener{
 	
 	public void mainLoop() {
 		while(mainCameraFrame.isVisible() && cameraOutputFrame.isVisible() && optionsFrame.isVisible()) {
+			long startTime = System.currentTimeMillis();
+			lastImage = getNewImage();
+			opencv_core.cvCopy(currentImage, lastImage);
 			if (updateCameraMode) {
 				updateCameraMode = false;
 				if (cameraMode) {
@@ -119,14 +129,17 @@ public class CameraAPI implements ActionListener{
 				}
 			}
 			
-			long startTime = System.currentTimeMillis();
+
 			updateImage();
 			mainCameraFrame.showImage(currentImage);
 			outputImage = getNewImage();
-			ip.process(currentImage, outputImage);
+			ip.process(currentImage, lastImage, outputImage);
 			
 			
 			cameraOutputFrame.showImage(outputImage);
+			long timeDiff = System.currentTimeMillis()-startTime;
+			int fps = (int) (1000/timeDiff);
+			mainCameraFrame.setTitle("Camera "+fps);
 			
 		}
 		
