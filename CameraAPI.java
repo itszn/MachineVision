@@ -20,7 +20,7 @@ import com.googlecode.javacv.cpp.opencv_highgui;
 
 public class CameraAPI implements ActionListener{
 	CanvasFrame mainCameraFrame;
-	CanvasFrame cameraOutputFrame;
+	ArrayList<CanvasFrame> cameraOutputFrames;
 	
 	JFrame optionsFrame;
 		JCheckBox cameraModeCheckbox;
@@ -40,7 +40,7 @@ public class CameraAPI implements ActionListener{
 	IplImage currentImage;
 	IplImage lastImage;
 	
-	IplImage outputImage;
+	IplImage[] outputImages;
 	
 	boolean cameraMode = false;
 	
@@ -61,15 +61,19 @@ public class CameraAPI implements ActionListener{
 		}
 		updateImage();
 		imgDim = new Dimension(currentImage.width(), currentImage.height());
-		outputImage = getNewImage();
+		outputImages = new IplImage[]{getNewImage()};
 		mainCameraFrame = new CanvasFrame("Camera");
 		mainCameraFrame.setLocation(0,0);
-		cameraOutputFrame = new CanvasFrame("Output");
-		cameraOutputFrame.setLocation(imgDim.width+5, 0);
+		cameraOutputFrames = new ArrayList<CanvasFrame>();
+		
 		
 		optionsFrame = new JFrame("Options"); 
-		optionsFrame.setLocation(0, imgDim.height+40);
+		optionsFrame.setLocation(2*imgDim.width+15, 0);
 		JPanel jp = new JPanel();
+			JButton jb = new JButton("Refresh");
+				jb.addActionListener(this);
+				jb.setActionCommand("resetWindows");
+			jp.add(jb);
 			JLabel jl = new JLabel("Use Camera");
 			jp.add(jl);
 			cameraModeCheckbox = new JCheckBox();
@@ -77,7 +81,7 @@ public class CameraAPI implements ActionListener{
 				cameraModeCheckbox.setActionCommand("cameraModeCheckbox");
 				cameraModeCheckbox.addActionListener(this);
 			jp.add(cameraModeCheckbox);
-			JButton jb = new JButton("Load Image");
+			jb = new JButton("Load Image");
 				jb.setActionCommand("loadImageButton");
 				jb.addActionListener(this);
 			jp.add(jb);
@@ -107,10 +111,19 @@ public class CameraAPI implements ActionListener{
 	public IplImage getNewImage() {
 		return IplImage.create(currentImage.width(), currentImage.height(), currentImage.depth(),currentImage.nChannels());
 	}
+	
+	public IplImage getNewImage(IplImage img) {
+		return IplImage.create(img.width(), img.height(), img.depth(),img.nChannels());
+	}
+	
 	boolean updateCameraMode = false;
 	
 	public void mainLoop() {
-		while(mainCameraFrame.isVisible() && cameraOutputFrame.isVisible() && optionsFrame.isVisible()) {
+		boolean outClosed = true;
+		while(mainCameraFrame.isVisible() && outClosed && optionsFrame.isVisible()) {
+			for (CanvasFrame cf : cameraOutputFrames) {
+				outClosed &= cf.isVisible();
+			}
 			long startTime = System.currentTimeMillis();
 			lastImage = getNewImage();
 			opencv_core.cvCopy(currentImage, lastImage);
@@ -129,14 +142,43 @@ public class CameraAPI implements ActionListener{
 				}
 			}
 			
-
+			
 			updateImage();
+			imgDim = new Dimension(currentImage.width(), currentImage.height());
+			
 			mainCameraFrame.showImage(currentImage);
-			outputImage = getNewImage();
-			ip.process(currentImage, lastImage, outputImage);
+			outputImages = ip.process(currentImage.clone(), lastImage.clone());
 			
+			for (int i=0; i< outputImages.length; i++) {
+				
+				if (cameraOutputFrames.size()>i && cameraOutputFrames.get(i)!=null) {
+					if (outputImages[i]==null) {
+						cameraOutputFrames.get(i).showImage(getNewImage());
+					}
+					else {
+						cameraOutputFrames.get(i).showImage(outputImages[i]);
+					}
+				}
+				else {
+					CanvasFrame f = new CanvasFrame("Output "+i);
+					int l = (i+1)*(imgDim.width+5);
+					int m = (1+1)*(imgDim.width+5);
+					f.setLocation(mainCameraFrame.getLocation().x+l%m, mainCameraFrame.getLocation().y+(l/m)*(imgDim.height));
+					if (cameraOutputFrames.size()>i)
+						cameraOutputFrames.set(i, f);
+					else
+						cameraOutputFrames.add(f);
+				}
+			}
+			if (cameraOutputFrames.size()>outputImages.length) {
+				for (int i=outputImages.length;i<cameraOutputFrames.size(); i++) {
+					CanvasFrame f = cameraOutputFrames.get(i);
+					if (f!=null)
+						f.dispose();
+					cameraOutputFrames.remove(i);
+				}
+			}
 			
-			cameraOutputFrame.showImage(outputImage);
 			long timeDiff = System.currentTimeMillis()-startTime;
 			int fps = (int) (1000/timeDiff);
 			mainCameraFrame.setTitle("Camera "+fps);
@@ -151,7 +193,8 @@ public class CameraAPI implements ActionListener{
 		}
 		
 		mainCameraFrame.dispose();
-		cameraOutputFrame.dispose();
+		for(CanvasFrame f: cameraOutputFrames)
+			f.dispose();
 		optionsFrame.dispose();
 	}
 	
@@ -240,6 +283,11 @@ public class CameraAPI implements ActionListener{
 
 				loadedPicsLabel.setText((selectedPic+1)+"/"+loadedPics.size());
 			}
+		}
+		else if (e.getActionCommand().equals("resetWindows")) {
+			for(CanvasFrame f: cameraOutputFrames)
+				f.dispose();
+			cameraOutputFrames = new ArrayList<CanvasFrame>();
 		}
 	}
 }
