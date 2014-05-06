@@ -16,6 +16,7 @@ import com.googlecode.javacv.cpp.opencv_features2d.KeyPoint;
 import com.googlecode.javacv.cpp.opencv_highgui;
 import com.googlecode.javacv.cpp.opencv_imgproc;
 import com.googlecode.javacv.cpp.opencv_legacy.CvSURFParams;
+import com.googlecode.javacv.cpp.opencv_nonfree;
 import com.googlecode.javacv.cpp.opencv_objdetect;
 import com.googlecode.javacv.cpp.opencv_video.BackgroundSubtractorMOG2;
 
@@ -26,7 +27,7 @@ public class SiftTest implements ImageProcesser{
 	
 	public static void main(String...args) {
 		instance = new SiftTest();
-		api = new CameraAPI(0,true,"",instance);
+		api = new CameraAPI(0,true,"bigger.png",instance);
 		api.start();
 	}
 
@@ -34,6 +35,7 @@ public class SiftTest implements ImageProcesser{
 
 	@Override
 	public IplImage[] process(IplImage currentImage, IplImage lastImage, IplImage... finalImage) {
+		try {
 		// TODO Auto-generated method stub
 		IplImage correspond = api.getNewImage();//IplImage.create(currentImage.width(), train.height()+ currentImage.height(), 8, 1);
 		
@@ -46,7 +48,8 @@ public class SiftTest implements ImageProcesser{
 		ObjectFinder.Settings set = new ObjectFinder.Settings();
 		set.setObjectImage(train);
 		set.setUseFLANN(true);
-		set.setRansacReprojThreshold(5);
+		set.setRansacReprojThreshold(10);
+//		set.setMatchesMin(7);
 		ObjectFinder find = new ObjectFinder(set);
 		
 		long start = System.currentTimeMillis();
@@ -60,13 +63,18 @@ public class SiftTest implements ImageProcesser{
 				int y1 = (int)Math.round(dst_corners[2*i+1]);
 				int x2 = (int)Math.round(dst_corners[2*j]);
 				int y2 = (int)Math.round(dst_corners[2*j+1]);
-				cvLine(correspond, cvPoint(x1, y1 + currentImage.height()), cvPoint(x2,y2 + currentImage.height()), CvScalar.WHITE, 1, 8, 0);
+				cvLine(correspond, cvPoint(x1, y1 ), cvPoint(x2,y2 ), CvScalar.RED, 5, 8, 0);
 			}
 		}
 		
 		//for (int i=0; i<find.)
 
-		return new IplImage[]{correspond};
+		return new IplImage[]{correspond,train};
+
+		} catch(Exception e) {
+			
+		}
+		return  new IplImage[]{};
 	}
 
 	ObjectFinder objFinder;
@@ -75,8 +83,8 @@ public class SiftTest implements ImageProcesser{
 	@Override
 	public void init(IplImage initialImage) {
 		Loader.load(opencv_objdetect.class);
-		
-		train = opencv_highgui.cvLoadImage("test.png", CV_LOAD_IMAGE_GRAYSCALE);
+		Loader.load(opencv_nonfree.class);
+		train = opencv_highgui.cvLoadImage("test2.png", CV_LOAD_IMAGE_GRAYSCALE);
 		trainG = IplImage.create(train.width(), train.height(), 8, 3);
 		cvCvtColor(train, trainG, CV_GRAY2BGR);
 		

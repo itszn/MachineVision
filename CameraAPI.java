@@ -187,7 +187,7 @@ public class CameraAPI implements ActionListener{
 		
 		try {
 			grabber.stop();
-		} catch (com.googlecode.javacv.FrameGrabber.Exception e) {
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
